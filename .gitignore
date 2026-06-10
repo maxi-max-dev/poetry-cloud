@@ -1,0 +1,4 @@
+data/corpus/
+data/*.bak
+.claude/
+.DS_Store

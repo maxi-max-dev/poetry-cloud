@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>诗云 · Poetry Cloud</title>
+<meta name="description" content="一片包含所有可能五言绝句的星云。每一首诗都有它确定的位置——包括人类写过的每一首。灵感来自刘慈欣《诗云》。">
+<meta property="og:title" content="诗云 · Poetry Cloud">
+<meta property="og:description" content="在 10⁶⁹ 首诗的星云中漂流，寻找人类写下的那几十首。">
+<style>
+  :root{
+    --gold:#ffd76a; --gold-dim:#c9a44f; --ink:#dfe4f5; --ink-dim:#8b93ad;
+    --panel:rgba(10,14,28,.78); --line:rgba(255,255,255,.09);
+    --kai:"Kaiti SC","STKaiti","KaiTi","Noto Serif TC","Noto Serif CJK TC","Noto Serif SC",serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#04060e;color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    -webkit-user-select:none;user-select:none}
+  #app,#app canvas{position:fixed;inset:0;display:block}
+  .glass{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .btn{display:inline-block;padding:10px 22px;border-radius:999px;border:1px solid var(--line);
+    background:rgba(255,255,255,.06);color:var(--ink);font-size:15px;cursor:pointer;
+    transition:all .15s;font-family:inherit}
+  .btn:hover{background:rgba(255,255,255,.12)}
+  .btn.gold{background:linear-gradient(135deg,#8a6420,#5d431a);border-color:#a87f33;color:#ffe9b8}
+  .btn.gold:hover{filter:brightness(1.2)}
+  .btn.sm{padding:6px 14px;font-size:13px}
+
+  /* ── 开场 ── */
+  #intro{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 40%,rgba(20,28,60,.55),rgba(2,4,10,.92));padding:18px}
+  #intro .card{max-width:560px;width:100%;padding:34px 36px;text-align:center;max-height:92vh;overflow:auto}
+  #intro h1{font-family:var(--kai);font-size:54px;margin:0;letter-spacing:.18em;color:#fff;
+    text-shadow:0 0 30px rgba(140,170,255,.6)}
+  #intro .en{letter-spacing:.5em;font-size:11px;color:var(--ink-dim);margin:6px 0 20px}
+  #intro p{font-size:15px;line-height:1.9;color:var(--ink);margin:10px 0;text-align:left}
+  #intro p.dim{color:var(--ink-dim);font-size:13px}
+  #intro .keys{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin:16px 0;
+    font-size:12.5px;color:var(--ink-dim)}
+  #intro .keys b{color:var(--ink);font-weight:600}
+  #intro .actions{display:flex;gap:12px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  #intro .credit{margin-top:20px;font-size:11px;color:#566;text-align:center}
+  sup{font-size:.6em}
+
+  /* ── HUD ── */
+  #hud{position:fixed;inset:0;z-index:5;pointer-events:none}
+  #hudBtns{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;display:flex;gap:8px;pointer-events:auto}
+  #hudInfo{position:absolute;left:14px;bottom:max(14px,env(safe-area-inset-bottom));font-size:12.5px;
+    color:var(--ink-dim);text-shadow:0 1px 4px #000;pointer-events:none;line-height:1.7}
+  #hudInfo b{color:var(--gold)}
+  #crosshair{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;
+    border-radius:50%;background:rgba(255,255,255,.55);box-shadow:0 0 6px rgba(255,255,255,.7)}
+  #lockHint{position:absolute;left:50%;bottom:18%;transform:translateX(-50%);font-size:13px;
+    color:var(--ink-dim);text-shadow:0 1px 4px #000;animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.95}}
+
+  /* ── 面板 ── */
+  .panel{position:fixed;z-index:10;display:none}
+  .panel.open{display:flex;flex-direction:column}
+  .panel h3{margin:0;padding:16px 20px 12px;font-size:16px;letter-spacing:.1em;color:var(--gold);
+    border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .panel h3 .x{cursor:pointer;color:var(--ink-dim);font-size:20px;line-height:1;padding:0 4px}
+  .panel h3 .x:hover{color:#fff}
+  #starmap{top:0;right:0;bottom:0;width:min(360px,92vw);border-radius:0;border-right:none;border-top:none;border-bottom:none}
+  #starList{overflow-y:auto;flex:1;padding:8px 0}
+  .srow{display:flex;align-items:baseline;gap:10px;padding:9px 20px;cursor:pointer;font-size:14.5px}
+  .srow:hover{background:rgba(255,255,255,.05)}
+  .srow .st{width:18px;color:#3a4258;flex:none}
+  .srow.found .st{color:var(--gold)}
+  .srow.found .tt{color:#ffe9b8}
+  .srow .tt{font-family:var(--kai);font-size:16px}
+  .srow .au{color:var(--ink-dim);font-size:12px;margin-left:auto;flex:none}
+  #seek{left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(560px,94vw);padding-bottom:16px}
+  #seek .body{padding:14px 20px;display:flex;flex-direction:column;gap:10px}
+  #seekIn{width:100%;height:64px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;
+    color:#fff;font-family:var(--kai);font-size:18px;padding:10px 12px;resize:none;outline:none;line-height:1.6}
+  #seekIn:focus{border-color:#5a6a9a}
+  #seekMeta{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-dim);flex-wrap:wrap}
+  #seekCount{color:var(--ink)}
+  #seekErr{color:#ff9d8a;font-size:12.5px;min-height:1em}
+  #seek .actions{display:flex;gap:10px;justify-content:flex-end}
+
+  /* ── 发现名诗 ── */
+  #discover{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+    background:rgba(2,4,10,.72);padding:18px;cursor:pointer}
+  #discover.open{display:flex}
+  #discover .dcard{max-width:480px;width:100%;text-align:center;padding:36px 30px;
+    border:1px solid #8a6420;box-shadow:0 0 60px rgba(255,180,60,.25),inset 0 0 40px rgba(255,180,60,.05);
+    animation:dIn .6s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes dIn{from{transform:scale(.86);opacity:0}to{transform:scale(1);opacity:1}}
+  #discover .cap{font-size:12.5px;color:var(--gold-dim);letter-spacing:.15em;margin-bottom:18px}
+  #discover .dt{font-family:var(--kai);font-size:34px;color:var(--gold);margin:0 0 4px;
+    text-shadow:0 0 24px rgba(255,200,90,.5)}
+  #discover .da{font-size:13px;color:var(--ink-dim);margin-bottom:18px}
+  #discover .dl{font-family:var(--kai);font-size:21px;line-height:2;color:#fff}
+  #discover .dn{margin-top:16px;font-size:13px;color:var(--gold-dim)}
+  #discover .dh{margin-top:22px;font-size:11.5px;color:#566;animation:pulse 2.4s infinite}
+
+  /* ── 杂项 ── */
+  #fade{position:fixed;inset:0;z-index:40;background:#000;opacity:0;pointer-events:none;transition:opacity .3s}
+  #fade.on{opacity:1;pointer-events:auto}
+  #toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);z-index:15;max-width:min(560px,92vw);
+    padding:12px 18px;font-size:14px;display:none;text-align:center;line-height:1.8}
+  #toast.open{display:block}
+  #toast .pm{font-family:var(--kai);font-size:16.5px;color:#fff}
+  #toast .pm.fam{color:#ffe9b8}
+  #toast .tbtns{margin-top:8px;display:flex;gap:8px;justify-content:center}
+  #err{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:#04060e;text-align:center;padding:24px;line-height:2}
+  #stickBase{position:fixed;z-index:8;width:104px;height:104px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.05);display:none;pointer-events:none;transform:translate(-50%,-50%)}
+  #stickKnob{position:absolute;left:50%;top:50%;width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,.28);transform:translate(-50%,-50%)}
+  @media (max-width:640px){
+    #intro h1{font-size:42px}
+    #intro .card{padding:24px 20px}
+    #toast{bottom:140px}
+    #seek{bottom:max(8px,env(safe-area-inset-bottom))}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud">
+  <div id="hudBtns">
+    <button class="btn sm" id="bSeek">✎ 寻诗</button>
+    <button class="btn sm" id="bMap">✦ 星图</button>
+    <button class="btn sm" id="bHelp">？</button>
+  </div>
+  <div id="hudInfo"></div>
+  <div id="crosshair" style="display:none"></div>
+  <div id="lockHint" style="display:none">点击画面，进入飞行</div>
+</div>
+
+<div id="starmap" class="panel glass">
+  <h3>星图 · 人类的诗<span class="x" data-close="starmap">×</span></h3>
+  <div id="starList"></div>
+</div>
+
+<div id="seek" class="panel glass">
+  <h3>寻诗 · 传送<span class="x" data-close="seek">×</span></h3>
+  <div class="body">
+    <textarea id="seekIn" placeholder="输入任意一首五言绝句（二十个汉字，标点可有可无）……&#10;它在诗云中的位置早已确定。"></textarea>
+    <div id="seekMeta"><span id="seekCount">0 / 20</span><span>任何 20 个字的组合，都是诗云中一首确定的诗</span></div>
+    <div id="seekErr"></div>
+    <div class="actions">
+      <button class="btn sm" id="bShare" disabled>分享当前的诗</button>
+      <button class="btn sm gold" id="bGo">传送</button>
+    </div>
+  </div>
+</div>
+
+<div id="discover">
+  <div class="dcard glass">
+    <div class="cap">─ 在亿万首诗的星云中，你认出了一首人类写下的诗 ─</div>
+    <h2 class="dt" id="dTitle"></h2>
+    <div class="da" id="dAuthor"></div>
+    <div class="dl" id="dLines"></div>
+    <div class="dn" id="dNote"></div>
+    <div class="dh">轻触任意处 · 继续漂流</div>
+  </div>
+</div>
+
+<div id="intro">
+  <div class="card glass">
+    <h1>诗　云</h1>
+    <div class="en">P O E T R Y &nbsp; C L O U D</div>
+    <p>这里漂浮着<b>所有可能的五言绝句</b>——每首二十个字，共 <span id="introTotal">10⁶⁹</span> 首，比可观测宇宙的原子还多。</p>
+    <p>绝大多数，是字的无意义组合。但人类写过的每一首五绝——《静夜思》《登鹳雀楼》《江雪》——也必然漂浮在其中某个<b>确定的位置</b>上，被亿万首乱诗包围着，等待被认出。</p>
+    <p class="dim">身边的诗只和你差几个字：向不同方向飞，二、三、四句的末字依次渐变；起句相同的诗，聚在同一片星区。在「寻诗」里写下任意二十个字，可以传送到那首诗面前。</p>
+    <div class="keys" id="keysDesk"><span><b>点击</b> 进入飞行</span><span><b>W A S D</b> 平移</span><span><b>空格 / C</b> 升降</span><span><b>Shift</b> 加速</span><span><b>滚轮</b> 调节速度</span><span><b>点击诗卡</b> 阅读复制</span></div>
+    <div class="keys" id="keysTouch" style="display:none"><span><b>左半屏拖动</b> 移动</span><span><b>右半屏滑动</b> 视角</span><span><b>点击诗卡</b> 阅读复制</span></div>
+    <div class="actions">
+      <button class="btn gold" id="bJing">带我去《静夜思》</button>
+      <button class="btn" id="bDrift">随机漂流</button>
+    </div>
+    <div class="credit">灵感来自刘慈欣小说《诗云》 · 字频语料来自 chinese-poetry 项目</div>
+  </div>
+</div>
+
+<div id="fade"></div>
+<div id="toast" class="glass"></div>
+<div id="err" class="glass"><div id="errMsg"></div></div>
+<div id="stickBase"><div id="stickKnob"></div></div>
+
+<script src="./data.js"></script>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script>
+  setTimeout(function(){
+    if(!window.__pcBooted){
+      var em=document.getElementById('errMsg');
+      em.innerHTML = window.POETRY_DATA
+        ? '三维引擎加载失败。<br>诗云需要联网加载 three.js（首次打开请保持网络畅通）。'
+        : '缺少 data.js（诗云字库与名诗数据）。<br>请确认 data.js 与 index.html 在同一目录。';
+      document.getElementById('err').style.display='flex';
+    }
+  }, 6000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ════════════════ 数据与诗空间几何 ════════════════
+   一首五绝 = 20 个字 c0..c19（四句：c0-4 / c5-9 / c10-14 / c15-19）。
+   三条空间轴各是一个混合进制大数（基数 N = 字库大小）：
+     x ← [c0, c1, c5..c9]   （高位→低位）
+     y ← [c2, c3, c10..c14]
+     z ← [c4, c15..c19]
+   于是：走一步，邻居诗的第二/三/四句末字（c9/c14/c19）渐变；
+   首句五个字全部在最高位 → 起句相同的诗聚在同一星区。
+   坐标范围最大 N^7 ≈ 10^24，必须用 BigInt + 浮动原点。 */
+
+const DATA = window.POETRY_DATA;
+if(!DATA){
+  document.getElementById('errMsg').innerHTML='缺少 data.js（诗云字库与名诗数据）。<br>请确认 data.js 与 index.html 在同一目录。';
+  document.getElementById('err').style.display='flex';
+  throw new Error('no data');
+}
+window.__pcBooted = true;
+const CHARS = [...DATA.chars];
+const N = CHARS.length;
+const Nn = BigInt(N);
+const CIDX = new Map(CHARS.map((c,i)=>[c,i]));
+const FAMOUS = DATA.famous.map((f,i)=>({
+  title:f.t, author:f.a, dynasty:f.d, lines:f.l, note:f.n,
+  str:f.l.join(''), key:'f'+i, g:null
+}));
+
+const XP=[0,1,5,6,7,8,9], YP=[2,3,10,11,12,13,14], ZP=[4,15,16,17,18,19];
+const POSS=[XP,YP,ZP];
+const MAXG = POSS.map(P=>Nn**BigInt(P.length));
+
+function strToIdx(str){
+  const cs=[...str];
+  if(cs.length!==20) return null;
+  const idx=[];
+  for(const ch of cs){ const i=CIDX.get(ch); if(i===undefined) return null; idx.push(i); }
+  return idx;
+}
+function idxToG(idx){
+  return POSS.map(P=>{ let v=0n; for(const p of P) v=v*Nn+BigInt(idx[p]); return v; });
+}
+function gToStr(g){
+  const c=new Array(20);
+  for(let a=0;a<3;a++){
+    let v=g[a]; const P=POSS[a];
+    for(let i=P.length-1;i>=0;i--){ c[P[i]]=CHARS[Number(v%Nn)]; v/=Nn; }
+  }
+  return c.join('');
+}
+function poemLines(str){ return [str.slice(0,5),str.slice(5,10),str.slice(10,15),str.slice(15,20)]; }
+
+const FAM_BY_KEY = new Map();
+for(const f of FAMOUS){
+  const idx=strToIdx(f.str);
+  if(idx){ f.g=idxToG(idx); FAM_BY_KEY.set(f.g.join(','), f); }
+  else console.warn('[诗云] 名诗用字不在字库，无法定位：', f.title);
+}
+
+window.__pcTest = ()=>{
+  const bad=[];
+  for(const f of FAMOUS){ if(!f.g){bad.push(f.title+'(缺字)');continue;}
+    if(gToStr(f.g)!==f.str) bad.push(f.title); }
+  console.log(`[诗云] 双向映射自检：${FAMOUS.length-bad.length}/${FAMOUS.length} 通过`, bad.length?bad:'');
+  return bad.length===0;
+};
+
+/* ════════════════ 配置 ════════════════ */
+const isTouch = 'ontouchstart' in window;
+const S = 36;                       // 格距（世界单位）
+const TEXT_R = 3;                   // 文字卡半径（格）
+const CARD_DIST = 2.75*S;           // 文字卡可见距离
+const POINT_R = isTouch ? 6 : 8;    // 远景光点半径（格）
+const DISC_DIST = 1.5*S;            // 名诗「认出」触发距离
+const REFRESH_MS = 120, POINTS_MS = 150;
+const TEX_CAP = isTouch ? 140 : 240;
+
+/* ════════════════ 相机状态（浮动原点） ════════════════ */
+const camG = [MAXG[0]/2n, MAXG[1]/2n, MAXG[2]/2n];  // 所在格（BigInt）
+const camF = [S/2, S/2, S/2];                        // 格内偏移 [0,S)
+let yaw=0, pitch=0, speedMul=1, curSpd=0;
+
+function carryClamp(){
+  for(let a=0;a<3;a++){
+    if(camF[a]>=S || camF[a]<0){
+      const k = Math.floor(camF[a]/S);
+      camG[a] += BigInt(k);
+      camF[a] -= k*S;
+    }
+    if(camG[a]<0n){ camG[a]=0n; camF[a]=0; }
+    if(camG[a]>=MAXG[a]){ camG[a]=MAXG[a]-1n; camF[a]=S-1e-3; }
+  }
+}
+
+/* ════════════════ 渲染基础 ════════════════ */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(0x04060e);
+document.getElementById('app').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x04060e, 0.0035);
+const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 7000);
+scene.add(camera);
+addEventListener('resize', ()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+/* ── 背景：恒星 + 星云雾 ── */
+const dotTex=(()=>{   // 圆形柔光点贴图（否则 Points 渲染为方块）
+  const c=document.createElement('canvas'); c.width=c.height=64;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,'rgba(255,255,255,1)');
+  gr.addColorStop(.35,'rgba(255,255,255,.55)');
+  gr.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=gr; x.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+})();
+const sky = new THREE.Group(); scene.add(sky);
+{
+  const n=1400, pos=new Float32Array(n*3), col=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const u=Math.random()*2-1, ph=Math.random()*Math.PI*2, r=2600+Math.random()*600;
+    const s=Math.sqrt(1-u*u);
+    pos[i*3]=r*s*Math.cos(ph); pos[i*3+1]=r*u; pos[i*3+2]=r*s*Math.sin(ph);
+    const b=.3+Math.random()*.7, w=Math.random();
+    col[i*3]=b*(.7+.3*w); col[i*3+1]=b*.78; col[i*3+2]=b*(1-.2*w);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  sky.add(new THREE.Points(g,new THREE.PointsMaterial({size:3.4,vertexColors:true,
+    transparent:true,opacity:.85,sizeAttenuation:true,fog:false,depthWrite:false,
+    map:dotTex,blending:THREE.AdditiveBlending})));
+}
+function nebulaTex(r,g,b){
+  const c=document.createElement('canvas'); c.width=c.height=256;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(128,128,0,128,128,128);
+  gr.addColorStop(0,`rgba(${r},${g},${b},.65)`);
+  gr.addColorStop(.45,`rgba(${r},${g},${b},.18)`);
+  gr.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=gr; x.fillRect(0,0,256,256);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+{
+  const texs=[nebulaTex(96,118,255),nebulaTex(168,108,255),nebulaTex(86,180,220),nebulaTex(255,184,120)];
+  for(let i=0;i<30;i++){
+    const m=new THREE.SpriteMaterial({map:texs[i<26?i%3:3],transparent:true,
+      opacity:.04+Math.random()*.1,blending:THREE.AdditiveBlending,fog:false,depthWrite:false});
+    const sp=new THREE.Sprite(m);
+    const u=Math.random()*2-1, ph=Math.random()*Math.PI*2, r=1300+Math.random()*1300;
+    const s=Math.sqrt(1-u*u);
+    sp.position.set(r*s*Math.cos(ph), r*u*.6, r*s*Math.sin(ph));
+    const sc=900+Math.random()*1800; sp.scale.set(sc,sc,1);
+    sky.add(sp);
+  }
+}
+
+/* ════════════════ 确定性抖动（格点→云感） ════════════════ */
+function lowBits(g){ return Number(g & 1073741823n)|0; }
+function h3i(x,y,z,s){
+  let h=(x|0)^Math.imul(s|0,374761393);
+  h=Math.imul(h^(h>>>15),2246822519); h^=Math.imul(y|0,668265263);
+  h=Math.imul(h^(h>>>13),3266489917); h^=Math.imul(z|0,2654435761);
+  h=Math.imul(h^(h>>>16),1274126177); h^=h>>>16;
+  return (h>>>0)/4294967296;
+}
+function jitterOf(gx,gy,gz){
+  const x=lowBits(gx),y=lowBits(gy),z=lowBits(gz);
+  return [(h3i(x,y,z,1)-.5)*.72*S,(h3i(x,y,z,2)-.5)*.72*S,(h3i(x,y,z,3)-.5)*.72*S];
+}
+
+/* ════════════════ 远景光点层 ════════════════ */
+const pointsGroup = new THREE.Group(); scene.add(pointsGroup);
+const P_CAP=(2*POINT_R+1)**3;
+const pPos=new Float32Array(P_CAP*3), pCol=new Float32Array(P_CAP*3);   // 常驻缓冲，跨格重建零分配
+let pointsObj=null, builtG=null, lastPointsT=-1e9;
+function rebuildPoints(){
+  builtG=[camG[0],camG[1],camG[2]];
+  const R=POINT_R;
+  let n=0;
+  for(let dx=-R;dx<=R;dx++){ const gx=camG[0]+BigInt(dx); if(gx<0n||gx>=MAXG[0]) continue;
+    const lx=lowBits(gx);
+    for(let dy=-R;dy<=R;dy++){ const gy=camG[1]+BigInt(dy); if(gy<0n||gy>=MAXG[1]) continue;
+      const ly=lowBits(gy);
+      for(let dz=-R;dz<=R;dz++){ const gz=camG[2]+BigInt(dz); if(gz<0n||gz>=MAXG[2]) continue;
+        const lz=lowBits(gz);
+        pPos[n*3]=dx*S+(h3i(lx,ly,lz,1)-.5)*.72*S;
+        pPos[n*3+1]=dy*S+(h3i(lx,ly,lz,2)-.5)*.72*S;
+        pPos[n*3+2]=dz*S+(h3i(lx,ly,lz,3)-.5)*.72*S;
+        const b=.3+.7*h3i(lx,ly,lz,7), w=h3i(lx,ly,lz,8);
+        pCol[n*3]=b*(.6+.4*w); pCol[n*3+1]=b*.66; pCol[n*3+2]=b*(1-.28*w);
+        n++;
+  }}}
+  if(!pointsObj){
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(pPos,3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('color',new THREE.BufferAttribute(pCol,3).setUsage(THREE.DynamicDrawUsage));
+    pointsObj=new THREE.Points(geo,new THREE.PointsMaterial({size:3.2,vertexColors:true,map:dotTex,
+      transparent:true,opacity:.9,sizeAttenuation:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+    pointsObj.frustumCulled=false;
+    pointsGroup.add(pointsObj);
+  }
+  const geo=pointsObj.geometry;
+  geo.attributes.position.needsUpdate=true;
+  geo.attributes.color.needsUpdate=true;
+  geo.setDrawRange(0,n);
+}
+
+/* ════════════════ 诗卡贴图（canvas → texture） ════════════════ */
+function makeCardMaterial(str,fam){
+  const w = fam?256:192, h=256;
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const x=cv.getContext('2d');
+  const lineH=(h-46)/4.6, top=30;
+  x.textAlign='center'; x.textBaseline='middle';
+  x.font='31px "Kaiti SC","STKaiti","KaiTi","Noto Serif TC","Noto Serif CJK TC","Noto Serif SC",serif';
+  if(fam){ x.fillStyle='#ffdf9e'; x.shadowColor='rgba(255,176,64,.95)'; x.shadowBlur=13; }
+  else   { x.fillStyle='rgba(233,231,255,.94)'; x.shadowColor='rgba(128,160,255,.9)'; x.shadowBlur=7; }
+  const cs=[...str], colW=40;
+  for(let li=0;li<4;li++){
+    const cx=w-26-li*colW;
+    for(let k=0;k<5;k++) x.fillText(cs[li*5+k], cx, top+k*lineH);
+  }
+  if(fam){
+    x.font='15px "Kaiti SC","STKaiti","KaiTi","Noto Serif TC","Noto Serif CJK TC","Noto Serif SC",serif';
+    x.fillStyle='rgba(255,200,110,.85)'; x.shadowBlur=8;
+    const lab=[...(fam.title+'·'+fam.author)].slice(0,13);
+    const lh=(h-36)/13;
+    lab.forEach((ch,i)=>x.fillText(ch, 22, 24+i*lh));
+  }
+  const tex=new THREE.CanvasTexture(cv);
+  tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  return {mat,tick:0};
+}
+const texCache=new Map(); let frameNo=0;
+function evictTextures(usedSet){
+  while(texCache.size>TEX_CAP){
+    let oldK=null, oldT=Infinity;
+    for(const [k,e] of texCache){ if(!usedSet.has(k) && e.tick<oldT){ oldT=e.tick; oldK=k; } }
+    if(oldK===null) break;
+    const e=texCache.get(oldK);
+    e.mat.map.dispose(); e.mat.dispose();
+    texCache.delete(oldK);
+  }
+}
+
+/* ════════════════ 文字卡层（近景） ════════════════ */
+const nearGroup = new THREE.Group(); scene.add(nearGroup);
+let nearBuiltG=[camG[0],camG[1],camG[2]];
+const geoCard=new THREE.PlaneGeometry(7.2,9.6);
+const geoFam=new THREE.PlaneGeometry(9.7,9.7);
+const haloTex=nebulaTex(255,196,96);
+const haloMat=new THREE.SpriteMaterial({map:haloTex,color:0xffc868,transparent:true,
+  opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false});
+const cards=new Map();   // cellKey -> card
+let lastRefreshT=-1e9;
+
+function makePlaceholder(){
+  return new THREE.MeshBasicMaterial({color:0x9fb0e8,transparent:true,opacity:.05,depthWrite:false});
+}
+function createCard(gx,gy,gz,key){
+  const g=[gx,gy,gz];
+  const fam=FAM_BY_KEY.get(key)||null;
+  const str=curSpd>9*S ? null : gToStr(g);   // 高速巡航时延迟解码，停下再算
+  const j=jitterOf(gx,gy,gz);
+  const cached=str!==null?texCache.get(str):null;
+  const mesh=new THREE.Mesh(fam?geoFam:geoCard, cached?cached.mat:makePlaceholder());
+  const card={key,g,str,fam,j,mesh,halo:null,hasTex:!!cached,rel:[0,0,0],d:1e9};
+  if(cached) cached.tick=frameNo;
+  if(fam){
+    const halo=new THREE.Sprite(haloMat);
+    halo.scale.set(34,34,1);
+    card.halo=halo; nearGroup.add(halo);
+    mesh.scale.set(1.16,1.16,1);
+  }
+  nearGroup.add(mesh);
+  cards.set(key,card);
+  return card;
+}
+function disposeCard(c){
+  nearGroup.remove(c.mesh);
+  if(c.halo) nearGroup.remove(c.halo);
+  if(!c.hasTex){ c.mesh.material.dispose(); }
+  cards.delete(c.key);
+}
+function refreshNear(force){
+  nearBuiltG=[camG[0],camG[1],camG[2]];
+  const want=new Set();
+  for(let dx=-TEXT_R;dx<=TEXT_R;dx++){ const gx=camG[0]+BigInt(dx); if(gx<0n||gx>=MAXG[0]) continue;
+    for(let dy=-TEXT_R;dy<=TEXT_R;dy++){ const gy=camG[1]+BigInt(dy); if(gy<0n||gy>=MAXG[1]) continue;
+      for(let dz=-TEXT_R;dz<=TEXT_R;dz++){ const gz=camG[2]+BigInt(dz); if(gz<0n||gz>=MAXG[2]) continue;
+        const key=gx+','+gy+','+gz;
+        want.add(key);
+        if(!cards.has(key)) createCard(gx,gy,gz,key);
+  }}}
+  for(const c of [...cards.values()]) if(!want.has(c.key)) disposeCard(c);
+  for(const c of cards.values()){
+    c.rel=[Number(c.g[0]-camG[0])*S+c.j[0], Number(c.g[1]-camG[1])*S+c.j[1], Number(c.g[2]-camG[2])*S+c.j[2]];
+    c.mesh.position.set(c.rel[0],c.rel[1],c.rel[2]);
+    if(c.halo) c.halo.position.set(c.rel[0],c.rel[1],c.rel[2]);
+  }
+}
+function pumpTextures(fast){
+  if(fast) return;
+  const cands=[];
+  for(const c of cards.values()) if(!c.hasTex && c.d<CARD_DIST*1.15) cands.push(c);   // 永不可见的角卡不浪费纹理
+  if(!cands.length) return;
+  cands.sort((a,b)=>a.d-b.d);
+  for(let i=0;i<Math.min(3,cands.length);i++){
+    const card=cands[i];
+    if(card.str===null) card.str=gToStr(card.g);
+    let e=texCache.get(card.str);
+    if(!e){ e=makeCardMaterial(card.str,card.fam); texCache.set(card.str,e); }
+    e.tick=frameNo;
+    card.mesh.material.dispose();          // 占位材质
+    card.mesh.material=e.mat;
+    card.hasTex=true;
+  }
+  if(texCache.size>TEX_CAP){
+    const used=new Set();
+    for(const c of cards.values()) if(c.hasTex) used.add(c.str);
+    evictTextures(used);
+  }
+}
+
+/* ════════════════ UI 工具 ════════════════ */
+const $=id=>document.getElementById(id);
+const panels={starmap:$('starmap'),seek:$('seek')};
+function anyModal(){ return $('intro').style.display!=='none' || $('discover').classList.contains('open')
+  || panels.starmap.classList.contains('open') || panels.seek.classList.contains('open'); }
+function openPanel(name){
+  closePanels();
+  panels[name].classList.add('open');
+  if(document.pointerLockElement) document.exitPointerLock();
+  if(name==='seek'&&!isTouch) setTimeout(()=>$('seekIn').focus(),50);
+  updateLockHint();
+}
+function closePanels(){ for(const k in panels) panels[k].classList.remove('open'); updateLockHint(); }
+function updateLockHint(){
+  $('lockHint').style.display=(!isTouch&&document.pointerLockElement!==renderer.domElement&&!anyModal())?'block':'none';
+}
+document.querySelectorAll('[data-close]').forEach(el=>el.onclick=()=>closePanels());
+
+let toastTimer=0;
+function toast(html,ms=5000){
+  const t=$('toast'); t.innerHTML=html; t.classList.add('open');
+  clearTimeout(toastTimer);
+  if(ms) toastTimer=setTimeout(()=>t.classList.remove('open'),ms);
+}
+const fmt=s=>poemLines(s).join('，')+'。';
+function urlFor(str){ return location.href.split('#')[0]+'#p='+encodeURIComponent(str); }
+function copyFallback(s){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=s; ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok=document.execCommand('copy'); ta.remove();
+    if(ok){ toast('已复制',1600); return; }
+  }catch(e){}
+  toast('无法自动复制，请手动选择：<br><span style="user-select:all">'+s.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>',9000);
+}
+function copyText(s){
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(s).then(()=>toast('已复制',1600)).catch(()=>copyFallback(s));
+  else copyFallback(s);
+}
+function poemToast(str,fam){
+  const cls=fam?'pm fam':'pm';
+  const head=fam?`<div style="color:var(--gold);font-size:12.5px;margin-bottom:4px">《${fam.title}》 ${fam.author} · ${fam.dynasty}</div>`:'';
+  toast(`${head}<div class="${cls}">${fmt(str)}</div><div class="tbtns"></div>`, 9000);
+  const bar=$('toast').querySelector('.tbtns');
+  const mk=(label,val)=>{ const b=document.createElement('button'); b.className='btn sm';
+    b.textContent=label; b.onclick=()=>copyText(val); bar.appendChild(b); };
+  mk('复制诗',fmt(str)); mk('复制位置链接',urlFor(str));
+}
+
+/* ════════════════ 已发现 / 名诗时刻 ════════════════ */
+let found=new Set();
+try{ found=new Set(JSON.parse(localStorage.getItem('shiyun_found_v1')||'[]')); }catch(e){}
+function saveFound(){ try{ localStorage.setItem('shiyun_found_v1',JSON.stringify([...found])); }catch(e){} }
+function discover(fam){
+  if(found.has(fam.key)) return;
+  found.add(fam.key); saveFound(); buildStarmap(); updateHud();
+  $('dTitle').textContent='《'+fam.title+'》';
+  $('dAuthor').textContent=fam.author+' · '+fam.dynasty;
+  $('dLines').innerHTML=fam.lines.map(l=>`<div>${l}</div>`).join('');
+  $('dNote').textContent=fam.note||'';
+  $('discover').classList.add('open');
+  if(document.pointerLockElement) document.exitPointerLock();
+}
+$('discover').onclick=()=>{ $('discover').classList.remove('open'); updateLockHint(); };
+
+/* ════════════════ 星图 / 寻诗 ════════════════ */
+function buildStarmap(){
+  $('starList').innerHTML='';
+  for(const f of FAMOUS){
+    if(!f.g) continue;
+    const row=document.createElement('div');
+    row.className='srow'+(found.has(f.key)?' found':'');
+    row.innerHTML=`<span class="st">${found.has(f.key)?'★':'·'}</span><span class="tt">${f.title}</span><span class="au">${f.author} · ${f.dynasty}</span>`;
+    row.onclick=()=>{ closePanels(); teleportToStr(f.str,{quiet:true});
+      toast(`已传送至《${f.title}》附近——朝前方发光处飞近，认出它。`,6000); };
+    $('starList').appendChild(row);
+  }
+}
+let lastTarget='';
+$('bMap').onclick=()=>panels.starmap.classList.contains('open')?closePanels():openPanel('starmap');
+$('bSeek').onclick=()=>panels.seek.classList.contains('open')?closePanels():openPanel('seek');
+$('bHelp').onclick=()=>{ closePanels(); $('intro').style.display='flex'; updateLockHint(); };
+$('seekIn').addEventListener('input',()=>{
+  const n=cleanPoem($('seekIn').value).length;
+  $('seekCount').textContent=n+' / 20';
+  $('seekErr').textContent='';
+});
+const IMAP = DATA.imap || {};   // 简→繁输入映射（只影响输入，不影响显示）
+function cleanPoem(s){ return [...s].filter(ch=>/[一-鿿]/.test(ch)); }
+function normPoem(cs){
+  let mapped=0;
+  const out=cs.map(ch=>{
+    if(CIDX.has(ch)) return ch;
+    const t=IMAP[ch];
+    if(t && CIDX.has(t)){ mapped++; return t; }
+    return ch;
+  });
+  return {cs:out, mapped};
+}
+$('bGo').onclick=()=>{
+  const raw=cleanPoem($('seekIn').value);
+  if(raw.length!==20){ $('seekErr').textContent=`需要恰好 20 个汉字（当前 ${raw.length} 个）`; return; }
+  const {cs,mapped}=normPoem(raw);
+  const missing=[...new Set(cs)].filter(ch=>!CIDX.has(ch));
+  if(missing.length){ $('seekErr').textContent='这些字不在诗云字库中：「'+missing.join('、')+'」'; return; }
+  const str=cs.join('');
+  closePanels();
+  teleportToStr(str,{quiet:true});
+  const fam=FAM_BY_KEY.get(idxToG(strToIdx(str)).join(','));
+  const note=mapped?`（${mapped} 个字已按繁体字库匹配）`:'';
+  toast(fam?'这是一首人类写过的诗——靠近它。'+note:'已传送。你周围漂浮着与它只差几个字的邻居。'+note,6000);
+};
+$('bShare').onclick=()=>{ if(lastTarget) copyText(urlFor(lastTarget)); };
+
+/* ════════════════ 传送 ════════════════ */
+function doFade(fn){
+  $('fade').classList.add('on');
+  setTimeout(()=>{ fn(); setTimeout(()=>$('fade').classList.remove('on'),90); },330);
+}
+function teleportToStr(str,opts={}){
+  const idx=strToIdx(str); if(!idx) return false;
+  const g=idxToG(idx);
+  const j=jitterOf(g[0],g[1],g[2]);
+  doFade(()=>{
+    camG[0]=g[0]; camG[1]=g[1];
+    if(g[2]+2n<MAXG[2]){ camG[2]=g[2]+2n; yaw=0; }
+    else { camG[2]=g[2]-2n; yaw=Math.PI; }
+    pitch=0;
+    camF[0]=j[0]; camF[1]=j[1]; camF[2]=j[2];
+    carryClamp();
+    refreshNear(true); rebuildPoints(); lastPointsT=performance.now();
+    lastTarget=str; $('bShare').disabled=false;
+    try{ history.replaceState(null,'','#p='+encodeURIComponent(str)); }catch(e){}
+  });
+  return true;
+}
+
+/* ════════════════ 输入：键鼠 / 触屏 ════════════════ */
+const keys=new Set();
+addEventListener('keydown',e=>{
+  if(e.code==='Escape'){ if(document.activeElement&&document.activeElement.blur) document.activeElement.blur(); closePanels(); return; }
+  if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT') return;
+  keys.add(e.code);
+  if(e.code==='Space') e.preventDefault();
+});
+addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('blur',()=>keys.clear());                 // 失焦清键，防 Cmd+Tab 后相机自飞
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) keys.clear(); });
+addEventListener('wheel',e=>{
+  if(e.ctrlKey||anyModal()) return;   // 触控板捏合/Ctrl+滚轮是浏览器缩放手势，不当调速
+  speedMul=Math.min(5000,Math.max(.12,speedMul*Math.exp(-e.deltaY*.0012)));
+},{passive:true});
+
+const canvas=renderer.domElement;
+let lastPointer='mouse';
+addEventListener('pointerdown',e=>{ if(e.pointerType) lastPointer=e.pointerType; },true);
+canvas.addEventListener('click',()=>{
+  if(anyModal()||lastPointer!=='mouse') return;   // 触屏笔电/iPad 外接鼠标也能进 pointer lock
+  if(document.pointerLockElement!==canvas){
+    try{ const p=canvas.requestPointerLock(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+  }
+});
+document.addEventListener('mousedown',e=>{
+  if(document.pointerLockElement===canvas) pickAt(0,0);   // 准星选取
+});
+document.addEventListener('mousemove',e=>{
+  if(document.pointerLockElement===canvas){
+    yaw-=e.movementX*.0021;
+    pitch=Math.min(1.5,Math.max(-1.5,pitch-e.movementY*.0021));
+  }
+});
+document.addEventListener('pointerlockchange',()=>{
+  const locked=document.pointerLockElement===canvas;
+  if(!locked) keys.clear();
+  $('crosshair').style.display=locked?'block':'none';
+  updateLockHint();
+});
+
+const ray=new THREE.Raycaster();
+function pickAt(nx,ny){
+  ray.setFromCamera(new THREE.Vector2(nx,ny),camera);
+  const meshes=[]; for(const c of cards.values()) if(c.hasTex) meshes.push(c.mesh);
+  const hit=ray.intersectObjects(meshes,false)[0];
+  if(hit){
+    const c=[...cards.values()].find(c=>c.mesh===hit.object);
+    if(c){ if(c.str===null) c.str=gToStr(c.g);
+      poemToast(c.str,c.fam); lastTarget=c.str; $('bShare').disabled=false; }
+  }
+}
+
+/* 触屏：左半屏摇杆移动，右半屏滑动视角，轻点选诗 */
+const joy={id:null,x0:0,y0:0,fx:0,fy:0};
+const look={id:null,x:0,y:0,moved:0,t0:0};
+if(isTouch){
+  canvas.addEventListener('touchstart',e=>{
+    if(anyModal()) return;
+    for(const t of e.changedTouches){
+      if(t.clientX<innerWidth/2 && joy.id===null){
+        joy.id=t.identifier; joy.x0=t.clientX; joy.y0=t.clientY; joy.fx=0; joy.fy=0;
+        const b=$('stickBase'); b.style.display='block'; b.style.left=t.clientX+'px'; b.style.top=t.clientY+'px';
+      } else if(look.id===null){
+        look.id=t.identifier; look.x=t.clientX; look.y=t.clientY; look.moved=0; look.t0=performance.now();
+      }
+    }
+  },{passive:true});
+  canvas.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){
+      if(t.identifier===joy.id){
+        const dx=t.clientX-joy.x0, dy=t.clientY-joy.y0, r=Math.hypot(dx,dy), max=52;
+        const cl=r>max?max/r:1;
+        joy.fx=dx*cl/max; joy.fy=dy*cl/max;
+        $('stickKnob').style.transform=`translate(calc(-50% + ${dx*cl}px),calc(-50% + ${dy*cl}px))`;
+      } else if(t.identifier===look.id){
+        const dx=t.clientX-look.x, dy=t.clientY-look.y;
+        look.moved+=Math.abs(dx)+Math.abs(dy);
+        yaw-=dx*.0045; pitch=Math.min(1.5,Math.max(-1.5,pitch-dy*.0045));
+        look.x=t.clientX; look.y=t.clientY;
+      }
+    }
+  },{passive:false});
+  const endTouches=(e,cancelled)=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===joy.id){ joy.id=null; joy.fx=0; joy.fy=0; $('stickBase').style.display='none';
+        $('stickKnob').style.transform='translate(-50%,-50%)'; }
+      else if(t.identifier===look.id){
+        if(!cancelled && look.moved<12 && performance.now()-look.t0<350 && !anyModal()){
+          pickAt((look.x/innerWidth)*2-1, -(look.y/innerHeight)*2+1);
+        }
+        look.id=null;
+      }
+    }
+  };
+  canvas.addEventListener('touchend',e=>endTouches(e,false));
+  canvas.addEventListener('touchcancel',e=>endTouches(e,true));   // 来电/通知打断时摇杆不卡死
+}
+
+/* ════════════════ HUD ════════════════ */
+function updateHud(){
+  $('hudInfo').innerHTML=`已发现 <b>${found.size}</b> / ${FAM_BY_KEY.size} 首人类的诗<br>速度 ×${speedMul<10?speedMul.toFixed(1):Math.round(speedMul)}`;
+}
+
+/* ════════════════ 开场 ════════════════ */
+{
+  const exp=Math.round(20*Math.log10(N));
+  $('introTotal').innerHTML=`10<sup>${exp}</sup>`;
+  if(isTouch){ $('keysDesk').style.display='none'; $('keysTouch').style.display='flex'; }
+}
+function closeIntro(){
+  $('intro').style.display='none';
+  updateLockHint();
+}
+$('bJing').onclick=()=>{
+  closeIntro();
+  const jing=FAMOUS.find(f=>f.title.includes('静夜思')&&f.g)||FAMOUS.find(f=>f.g);
+  if(jing){ teleportToStr(jing.str,{quiet:true});
+    toast('前方发光处，就是它。飞近一点。',6000); }
+};
+$('bDrift').onclick=()=>{
+  closeIntro();
+  doFade(()=>{
+    for(let a=0;a<3;a++){
+      let v=0n; const P=POSS[a];
+      for(let i=0;i<P.length;i++) v=v*Nn+BigInt(Math.floor(Math.random()*N));
+      camG[a]=v; camF[a]=S/2;
+    }
+    carryClamp(); refreshNear(true); rebuildPoints();
+  });
+  toast('你漂流在亿万首无人读过的诗之间。点击任何一首阅读它。',7000);
+};
+
+/* URL 直达：#p=二十个汉字 */
+function badHash(){
+  try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  toast('链接里的诗无法识别（可能被截断），已带你随机漂流。',7000);
+}
+function tryHash(){
+  const m=location.hash.match(/^#p=(.+)$/);
+  if(!m) return false;
+  if(m[1].length>240){ badHash(); return false; }   // 合法载荷至多 ~180 字符
+  let str; try{ str=decodeURIComponent(m[1]); }catch(e){ badHash(); return false; }
+  const {cs}=normPoem(cleanPoem(str));
+  if(cs.length!==20 || cs.some(ch=>!CIDX.has(ch))){ badHash(); return false; }
+  $('intro').style.display='none';
+  teleportToStr(cs.join(''),{quiet:true});
+  toast('有人把这首诗的位置分享给了你。',6000);
+  return true;
+}
+
+/* ════════════════ 主循环 ════════════════ */
+const fwd=new THREE.Vector3(), rgt=new THREE.Vector3();
+const eul=new THREE.Euler(0,0,0,'YXZ');
+let prevT=performance.now(), hudT=0;
+let lastCell=null;
+function step(dt){
+  frameNo++;
+  /* 朝向 */
+  eul.set(pitch,yaw,0);
+  camera.quaternion.setFromEuler(eul);
+  /* 速度向量 */
+  let mF=0,mR=0,mU=0;
+  if(!anyModal()){
+    if(keys.has('KeyW')||keys.has('ArrowUp'))mF+=1;
+    if(keys.has('KeyS')||keys.has('ArrowDown'))mF-=1;
+    if(keys.has('KeyD')||keys.has('ArrowRight'))mR+=1;
+    if(keys.has('KeyA')||keys.has('ArrowLeft'))mR-=1;
+    if(keys.has('Space'))mU+=1;
+    if(keys.has('KeyC'))mU-=1;
+    mF+=-joy.fy; mR+=joy.fx;
+  }
+  const boost=(keys.has('ShiftLeft')||keys.has('ShiftRight'))?4:1;
+  const spd=1.15*S*boost*speedMul; curSpd=spd;
+  fwd.set(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch));
+  rgt.set(Math.cos(yaw),0,-Math.sin(yaw));
+  camF[0]+=(fwd.x*mF+rgt.x*mR)*spd*dt;
+  camF[1]+=(fwd.y*mF+mU)*spd*dt;
+  camF[2]+=(fwd.z*mF+rgt.z*mR)*spd*dt;
+  carryClamp();
+
+  const now=performance.now();
+  const crossed=!lastCell||camG[0]!==lastCell[0]||camG[1]!==lastCell[1]||camG[2]!==lastCell[2];
+  if(crossed && now-lastRefreshT>REFRESH_MS && spd<40*S){   // 极速巡航时近景卡反正不可读，停下再刷
+    refreshNear(); lastRefreshT=now; lastCell=[camG[0],camG[1],camG[2]];
+  }
+  if((!builtG||camG[0]!==builtG[0]||camG[1]!==builtG[1]||camG[2]!==builtG[2]) && now-lastPointsT>POINTS_MS){
+    rebuildPoints(); lastPointsT=now;
+  }
+
+  /* 浮动原点：组整体平移 */
+  const pd=[Number(camG[0]-(builtG?builtG[0]:camG[0])),Number(camG[1]-(builtG?builtG[1]:camG[1])),Number(camG[2]-(builtG?builtG[2]:camG[2]))];
+  pointsGroup.position.set(-(pd[0]*S+camF[0]),-(pd[1]*S+camF[1]),-(pd[2]*S+camF[2]));
+  const nd=[Number(camG[0]-nearBuiltG[0]),Number(camG[1]-nearBuiltG[1]),Number(camG[2]-nearBuiltG[2])];
+  const nOff=[-(nd[0]*S+camF[0]),-(nd[1]*S+camF[1]),-(nd[2]*S+camF[2])];
+  nearGroup.position.set(nOff[0],nOff[1],nOff[2]);
+
+  /* 诗卡：朝向相机、按距离淡入、名诗检测 */
+  const t=now*.001;
+  for(const c of cards.values()){
+    const wx=c.rel[0]+nOff[0], wy=c.rel[1]+nOff[1], wz=c.rel[2]+nOff[2];
+    const d=Math.hypot(wx,wy,wz);
+    c.d=d;
+    const vis=d<CARD_DIST;
+    c.mesh.visible=vis;
+    if(c.halo){
+      const hv=d<CARD_DIST*1.1;
+      c.halo.visible=hv;
+      if(hv){ const p=34*(1+.1*Math.sin(t*2.2+c.rel[0])); c.halo.scale.set(p,p,1); }
+      if(c.fam && d<DISC_DIST && !found.has(c.fam.key)) discover(c.fam);
+    }
+    if(!vis) continue;
+    c.mesh.quaternion.copy(camera.quaternion);
+    const o=Math.min(1,Math.max(0,(CARD_DIST-d)/(CARD_DIST-1.9*S)));
+    c.mesh.material.opacity=c.hasTex?(c.fam?1:.95)*o:.05*o;
+  }
+
+  pumpTextures(spd>9*S);   // 高速巡航时不生成文字贴图
+  sky.rotation.y+=dt*.0016;
+
+  hudT+=dt; if(hudT>.25){ hudT=0; updateHud(); }
+}
+
+function tick(dt){ step(dt); renderer.render(scene,camera); }
+renderer.setAnimationLoop(()=>{
+  const now=performance.now();
+  const dt=Math.min((now-prevT)/1000,.1); prevT=now;
+  tick(dt);
+});
+/* 测试钩子：在 rAF 被挂起的环境（隐藏标签页）手动驱动模拟 */
+window.__pcTick=(dt,n)=>{ dt=dt||1/60; n=n||1; for(let i=0;i<n;i++) tick(dt); return window.__pcDebug?window.__pcDebug():null; };
+
+/* ════════════════ 启动 ════════════════ */
+buildStarmap();
+updateHud();
+window.__pcTest();
+window.__pcDebug=()=>({frame:frameNo,g:camG.map(String),f:camF.map(v=>+v.toFixed(2)),yaw:+yaw.toFixed(3),pitch:+pitch.toFixed(3),keys:[...keys],modal:anyModal(),cards:cards.size});
+if(!tryHash()){
+  /* 默认落点：随机起点（等待玩家在开场选择） */
+  for(let a=0;a<3;a++){
+    let v=0n; const P=POSS[a];
+    for(let i=0;i<P.length;i++) v=v*Nn+BigInt(Math.floor(Math.random()*N));
+    camG[a]=v;
+  }
+  carryClamp(); refreshNear(true); rebuildPoints(); lastCell=[camG[0],camG[1],camG[2]];
+}
+addEventListener('hashchange',()=>tryHash());
+</script>
+</body>
+</html>
