@@ -40,7 +40,11 @@
   #intro .keys{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin:16px 0;
     font-size:12.5px;color:var(--ink-dim)}
   #intro .keys b{color:var(--ink);font-weight:600}
-  #intro .actions{display:flex;gap:12px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  #intro .todo{text-align:left;margin:16px 2px 4px;display:flex;flex-direction:column;gap:10px}
+  #intro .todo div{font-size:14.5px;color:var(--ink);display:flex;gap:11px;align-items:baseline;line-height:1.5}
+  #intro .todo .ic{font-size:17px;flex:none;width:22px;text-align:center}
+  #intro .todo b{color:#fff}
+  #intro .actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
   #intro .credit{margin-top:20px;font-size:11px;color:#566;text-align:center}
   sup{font-size:.6em}
 
@@ -63,24 +67,24 @@
     border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
   .panel h3 .x{cursor:pointer;color:var(--ink-dim);font-size:20px;line-height:1;padding:0 4px}
   .panel h3 .x:hover{color:#fff}
-  #starmap{top:0;right:0;bottom:0;width:min(360px,92vw);border-radius:0;border-right:none;border-top:none;border-bottom:none}
-  #starList{overflow-y:auto;flex:1;padding:8px 0}
+  #finder{top:0;right:0;bottom:0;width:min(384px,94vw);border-radius:0;border-top:none;border-right:none;border-bottom:none}
+  .fhead{padding:14px 18px 13px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
+  #seekIn{width:100%;height:52px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;
+    color:#fff;font-family:var(--kai);font-size:17px;padding:9px 11px;resize:none;outline:none;line-height:1.5}
+  #seekIn:focus{border-color:#5a6a9a}
+  #seekIn::placeholder{font-family:-apple-system,"PingFang SC",sans-serif;font-size:12px;color:var(--ink-dim);line-height:1.5}
+  #seekAct{display:flex;gap:8px;flex-wrap:wrap}
+  #seekAct:empty,#seekErr:empty{display:none}
+  #seekErr{color:#ff9d8a;font-size:12px;line-height:1.5}
+  .lhdr{padding:11px 20px 5px;font-size:11.5px;color:var(--ink-dim);letter-spacing:.04em}
+  #starList{overflow-y:auto;flex:1;padding:2px 0 14px}
   .srow{display:flex;align-items:baseline;gap:10px;padding:9px 20px;cursor:pointer;font-size:14.5px}
-  .srow:hover{background:rgba(255,255,255,.05)}
-  .srow .st{width:18px;color:#3a4258;flex:none}
+  .srow:hover{background:rgba(255,255,255,.06)}
+  .srow .st{width:16px;color:#3a4258;flex:none}
   .srow.found .st{color:var(--gold)}
   .srow.found .tt{color:#ffe9b8}
   .srow .tt{font-family:var(--kai);font-size:16px}
-  .srow .au{color:var(--ink-dim);font-size:12px;margin-left:auto;flex:none}
-  #seek{left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(560px,94vw);padding-bottom:16px}
-  #seek .body{padding:14px 20px;display:flex;flex-direction:column;gap:10px}
-  #seekIn{width:100%;height:64px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;
-    color:#fff;font-family:var(--kai);font-size:18px;padding:10px 12px;resize:none;outline:none;line-height:1.6}
-  #seekIn:focus{border-color:#5a6a9a}
-  #seekMeta{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-dim);flex-wrap:wrap}
-  #seekCount{color:var(--ink)}
-  #seekErr{color:#ff9d8a;font-size:12.5px;min-height:1em}
-  #seek .actions{display:flex;gap:10px;justify-content:flex-end}
+  .srow .au{color:var(--ink-dim);font-size:12px;margin-left:auto;flex:none;text-align:right}
 
   /* ── 发现名诗 ── */
   #discover{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
@@ -117,7 +121,6 @@
     #intro h1{font-size:42px}
     #intro .card{padding:24px 20px}
     #toast{bottom:140px}
-    #seek{bottom:max(8px,env(safe-area-inset-bottom))}
   }
 </style>
 </head>
@@ -127,7 +130,7 @@
 <div id="hud">
   <div id="hudBtns">
     <button class="btn sm" id="bSeek">✎ 寻诗</button>
-    <button class="btn sm" id="bMap">✦ 星图</button>
+    <button class="btn sm" id="bMap">⭐ 名诗</button>
     <button class="btn sm" id="bHelp">？</button>
   </div>
   <div id="hudInfo"></div>
@@ -135,22 +138,15 @@
   <div id="lockHint" style="display:none">点击画面，进入飞行</div>
 </div>
 
-<div id="starmap" class="panel glass">
-  <h3>星图 · 人类的诗<span class="x" data-close="starmap">×</span></h3>
-  <div id="starList"></div>
-</div>
-
-<div id="seek" class="panel glass">
-  <h3>寻诗 · 传送<span class="x" data-close="seek">×</span></h3>
-  <div class="body">
-    <textarea id="seekIn" placeholder="输入任意一首五言绝句（二十个汉字，标点可有可无）……&#10;它在诗云中的位置早已确定。"></textarea>
-    <div id="seekMeta"><span id="seekCount">0 / 20</span><span>任何 20 个字的组合，都是诗云中一首确定的诗</span></div>
+<div id="finder" class="panel glass">
+  <h3>寻诗 · 名诗<span class="x" data-close="finder">×</span></h3>
+  <div class="fhead">
+    <textarea id="seekIn" rows="2" placeholder="搜名诗：诗名 / 作者 / 诗句　　|　　或写下任意 20 字，传送到那首诗"></textarea>
+    <div id="seekAct"></div>
     <div id="seekErr"></div>
-    <div class="actions">
-      <button class="btn sm" id="bShare" disabled>分享当前的诗</button>
-      <button class="btn sm gold" id="bGo">传送</button>
-    </div>
   </div>
+  <div id="listHdr" class="lhdr"></div>
+  <div id="starList"></div>
 </div>
 
 <div id="discover">
@@ -168,13 +164,18 @@
   <div class="card glass">
     <h1>诗　云</h1>
     <div class="en">P O E T R Y &nbsp; C L O U D</div>
-    <p>这里漂浮着<b>所有可能的五言绝句</b>——每首二十个字，共 <span id="introTotal">10⁶⁹</span> 首，比可观测宇宙的原子还多。</p>
-    <p>绝大多数，是字的无意义组合。但人类写过的每一首五绝——《静夜思》《登鹳雀楼》《江雪》——也必然漂浮在其中某个<b>确定的位置</b>上，被亿万首乱诗包围着，等待被认出。</p>
-    <p class="dim">身边的诗只和你差几个字：向不同方向飞，二、三、四句的末字依次渐变；起句相同的诗，聚在同一片星区。在「寻诗」里写下任意二十个字，可以传送到那首诗面前。</p>
-    <div class="keys" id="keysDesk"><span><b>点击</b> 进入飞行</span><span><b>W A S D</b> 平移</span><span><b>空格 / C</b> 升降</span><span><b>Shift</b> 加速</span><span><b>滚轮</b> 调节速度</span><span><b>点击诗卡</b> 阅读复制</span></div>
-    <div class="keys" id="keysTouch" style="display:none"><span><b>左半屏拖动</b> 移动</span><span><b>右半屏滑动</b> 视角</span><span><b>点击诗卡</b> 阅读复制</span></div>
+    <p>把<b>所有可能的五言绝句</b>都摊进一片星空：每首 20 字，共 <span id="introTotal">10⁶⁹</span> 种，比宇宙的原子还多。每一首，都漂在它<b>唯一确定的位置</b>上。</p>
+    <p>绝大多数是乱码似的字堆。但人类真正写过的名诗——《静夜思》《江雪》——也藏在这片星海的某一点，被乱诗包围着，<b>等你认出</b>。</p>
+    <div class="todo">
+      <div><span class="ic">🚀</span><span>自由飞行，凑近读<b>身边</b>任何一首</span></div>
+      <div><span class="ic">🔍</span><span><b>搜一首名诗</b>，或写下任意 20 字，一键传送过去</span></div>
+      <div><span class="ic">⭐</span><span>飞近《静夜思》这样的<b>真名诗</b>，它会亮起金光</span></div>
+    </div>
+    <div class="keys" id="keysDesk"><span><b>点击画面</b> 进入飞行</span><span><b>W A S D</b> 平移</span><span><b>空格 / C</b> 升降</span><span><b>Shift</b> 加速</span><span><b>滚轮</b> 调速</span></div>
+    <div class="keys" id="keysTouch" style="display:none"><span><b>左下摇杆</b> 移动</span><span><b>右半屏滑动</b> 转视角</span><span><b>点诗卡</b> 阅读</span></div>
     <div class="actions">
       <button class="btn gold" id="bJing">带我去《静夜思》</button>
+      <button class="btn" id="bPick">挑一首名诗</button>
       <button class="btn" id="bDrift">随机漂流</button>
     </div>
     <div class="credit">灵感来自刘慈欣小说《诗云》 · 字频语料来自 chinese-poetry 项目</div>
@@ -533,14 +534,17 @@ function pumpTextures(fast){
 
 /* ════════════════ UI 工具 ════════════════ */
 const $=id=>document.getElementById(id);
-const panels={starmap:$('starmap'),seek:$('seek')};
+const panels={finder:$('finder')};
 function anyModal(){ return $('intro').style.display!=='none' || $('discover').classList.contains('open')
-  || panels.starmap.classList.contains('open') || panels.seek.classList.contains('open'); }
-function openPanel(name){
+  || panels.finder.classList.contains('open'); }
+function openFinder(focus){
+  const wasOpen=panels.finder.classList.contains('open');
   closePanels();
-  panels[name].classList.add('open');
+  if(wasOpen){ updateLockHint(); return; }   // 再点同一按钮 = 收起
+  panels.finder.classList.add('open');
   if(document.pointerLockElement) document.exitPointerLock();
-  if(name==='seek'&&!isTouch) setTimeout(()=>$('seekIn').focus(),50);
+  refreshList();
+  if(focus&&!isTouch) setTimeout(()=>$('seekIn').focus(),50);
   updateLockHint();
 }
 function closePanels(){ for(const k in panels) panels[k].classList.remove('open'); updateLockHint(); }
@@ -588,7 +592,7 @@ try{ found=new Set(JSON.parse(localStorage.getItem('shiyun_found_v1')||'[]')); }
 function saveFound(){ try{ localStorage.setItem('shiyun_found_v1',JSON.stringify([...found])); }catch(e){} }
 function discover(fam){
   if(found.has(fam.key)) return;
-  found.add(fam.key); saveFound(); buildStarmap(); updateHud();
+  found.add(fam.key); saveFound(); refreshList(); updateHud();
   $('dTitle').textContent='《'+fam.title+'》';
   $('dAuthor').textContent=fam.author+' · '+fam.dynasty;
   $('dLines').innerHTML=fam.lines.map(l=>`<div>${l}</div>`).join('');
@@ -598,28 +602,7 @@ function discover(fam){
 }
 $('discover').onclick=()=>{ $('discover').classList.remove('open'); updateLockHint(); };
 
-/* ════════════════ 星图 / 寻诗 ════════════════ */
-function buildStarmap(){
-  $('starList').innerHTML='';
-  for(const f of FAMOUS){
-    if(!f.g) continue;
-    const row=document.createElement('div');
-    row.className='srow'+(found.has(f.key)?' found':'');
-    row.innerHTML=`<span class="st">${found.has(f.key)?'★':'·'}</span><span class="tt">${f.title}</span><span class="au">${f.author} · ${f.dynasty}</span>`;
-    row.onclick=()=>{ closePanels(); teleportToStr(f.str,{quiet:true});
-      toast(`已传送至《${f.title}》附近——朝前方发光处飞近，认出它。`,6000); };
-    $('starList').appendChild(row);
-  }
-}
-let lastTarget='';
-$('bMap').onclick=()=>panels.starmap.classList.contains('open')?closePanels():openPanel('starmap');
-$('bSeek').onclick=()=>panels.seek.classList.contains('open')?closePanels():openPanel('seek');
-$('bHelp').onclick=()=>{ closePanels(); $('intro').style.display='flex'; updateLockHint(); };
-$('seekIn').addEventListener('input',()=>{
-  const n=cleanPoem($('seekIn').value).length;
-  $('seekCount').textContent=n+' / 20';
-  $('seekErr').textContent='';
-});
+/* ════════════════ 寻诗 · 名诗（合并面板：浏览 / 搜索 / 传送） ════════════════ */
 const IMAP = DATA.imap || {};   // 简→繁输入映射（只影响输入，不影响显示）
 function cleanPoem(s){ return [...s].filter(ch=>/[一-鿿]/.test(ch)); }
 function normPoem(cs){
@@ -632,20 +615,64 @@ function normPoem(cs){
   });
   return {cs:out, mapped};
 }
-$('bGo').onclick=()=>{
-  const raw=cleanPoem($('seekIn').value);
-  if(raw.length!==20){ $('seekErr').textContent=`需要恰好 20 个汉字（当前 ${raw.length} 个）`; return; }
-  const {cs,mapped}=normPoem(raw);
-  const missing=[...new Set(cs)].filter(ch=>!CIDX.has(ch));
-  if(missing.length){ $('seekErr').textContent='这些字不在诗云字库中：「'+missing.join('、')+'」'; return; }
+let lastTarget='';
+
+function famRow(f){
+  const row=document.createElement('div');
+  row.className='srow'+(found.has(f.key)?' found':'');
+  row.innerHTML=`<span class="st">${found.has(f.key)?'★':'·'}</span><span class="tt">${f.title}</span><span class="au">${f.author} · ${f.dynasty}</span>`;
+  row.onclick=()=>{ closePanels(); teleportToStr(f.str,{quiet:true});
+    toast(`已传送至《${f.title}》附近——朝前方发光处飞近，认出它。`,6000); };
+  return row;
+}
+function addActBtn(label,fn){
+  const b=document.createElement('button');
+  b.className='btn sm gold'; b.textContent=label; b.onclick=fn;
+  $('seekAct').appendChild(b);
+}
+function padPoem(cs){
+  const out=[...cs];
+  while(out.length<20) out.push(CHARS[Math.floor(Math.random()*N)]);
+  return out;
+}
+function goFree(cs,padded){
   const str=cs.join('');
   closePanels();
   teleportToStr(str,{quiet:true});
   const fam=FAM_BY_KEY.get(idxToG(strToIdx(str)).join(','));
-  const note=mapped?`（${mapped} 个字已按繁体字库匹配）`:'';
-  toast(fam?'这是一首人类写过的诗——靠近它。'+note:'已传送。你周围漂浮着与它只差几个字的邻居。'+note,6000);
-};
-$('bShare').onclick=()=>{ if(lastTarget) copyText(urlFor(lastTarget)); };
+  toast(fam?'这是一首人类写过的诗——靠近它。'
+    :(padded?'已随机补全为 20 字并传送——开头是你写的字的诗，都聚在这片星区。'
+    :'已传送。你周围漂浮着与它只差几个字的邻居。'),7000);
+}
+function refreshList(){
+  const q=$('seekIn').value;
+  const qc=q.replace(/[《》〈〉""''\s，。、！？；：·.,!?]/g,'');
+  $('seekErr').textContent=''; $('seekAct').innerHTML='';
+  /* 名诗模糊搜索：诗名 / 作者 / 朝代 / 诗句 */
+  const hits=FAMOUS.filter(f=>f.g && (!qc
+    || f.title.includes(qc) || f.author.includes(qc) || f.dynasty===qc || f.str.includes(qc)));
+  const list=$('starList'); list.innerHTML='';
+  for(const f of hits) list.appendChild(famRow(f));
+  $('listHdr').textContent = qc
+    ? (hits.length?`匹配的名诗 · ${hits.length} 首 · 点击传送`:'没有匹配的名诗——但下面仍可作为新诗传送')
+    : `全部名诗 · ${FAM_BY_KEY.size} 首 · ★ 已认出 ${found.size} · 点击传送`;
+  /* 自由传送：写多少字都行，不足随机补全，超出取前 20 */
+  const raw=cleanPoem(q);
+  if(!raw.length) return;
+  const {cs}=normPoem(raw);
+  const missing=[...new Set(cs)].filter(ch=>!CIDX.has(ch));
+  if(missing.length){
+    $('seekErr').textContent='「'+missing.join('、')+'」不在诗云字库中，无法作为诗传送（名诗搜索不受影响）';
+    return;
+  }
+  if(raw.length===20) addActBtn('传送到这 20 个字 →',()=>goFree(cs,false));
+  else if(raw.length<20) addActBtn(`随机补全成 20 字传送（已写 ${raw.length} 字）→`,()=>goFree(padPoem(cs),true));
+  else addActBtn(`取前 20 字传送（已写 ${raw.length} 字）→`,()=>goFree(cs.slice(0,20),false));
+}
+$('bMap').onclick=()=>openFinder(false);
+$('bSeek').onclick=()=>openFinder(true);
+$('bHelp').onclick=()=>{ closePanels(); $('intro').style.display='flex'; updateLockHint(); };
+$('seekIn').addEventListener('input',refreshList);
 
 /* ════════════════ 传送 ════════════════ */
 function doFade(fn){
@@ -664,7 +691,7 @@ function teleportToStr(str,opts={}){
     camF[0]=j[0]; camF[1]=j[1]; camF[2]=j[2];
     carryClamp();
     refreshNear(true); rebuildPoints(); lastPointsT=performance.now();
-    lastTarget=str; $('bShare').disabled=false;
+    lastTarget=str;
     try{ history.replaceState(null,'','#p='+encodeURIComponent(str)); }catch(e){}
   });
   return true;
@@ -719,7 +746,7 @@ function pickAt(nx,ny){
   if(hit){
     const c=[...cards.values()].find(c=>c.mesh===hit.object);
     if(c){ if(c.str===null) c.str=gToStr(c.g);
-      poemToast(c.str,c.fam); lastTarget=c.str; $('bShare').disabled=false; }
+      poemToast(c.str,c.fam); lastTarget=c.str; }
   }
 }
 
@@ -791,6 +818,7 @@ $('bJing').onclick=()=>{
   if(jing){ teleportToStr(jing.str,{quiet:true});
     toast('前方发光处，就是它。飞近一点。',6000); }
 };
+$('bPick').onclick=()=>{ closeIntro(); openFinder(false); };
 $('bDrift').onclick=()=>{
   closeIntro();
   doFade(()=>{
@@ -904,7 +932,7 @@ renderer.setAnimationLoop(()=>{
 window.__pcTick=(dt,n)=>{ dt=dt||1/60; n=n||1; for(let i=0;i<n;i++) tick(dt); return window.__pcDebug?window.__pcDebug():null; };
 
 /* ════════════════ 启动 ════════════════ */
-buildStarmap();
+refreshList();
 updateHud();
 window.__pcTest();
 window.__pcDebug=()=>({frame:frameNo,g:camG.map(String),f:camF.map(v=>+v.toFixed(2)),yaw:+yaw.toFixed(3),pitch:+pitch.toFixed(3),keys:[...keys],modal:anyModal(),cards:cards.size});
