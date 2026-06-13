@@ -950,5 +950,13 @@ addEventListener('hashchange',()=>tryHash());
 <!-- 访问统计：与 max-huang 主页共用 GoatCounter 账号，按路径区分；
      count.js 自动忽略 localhost 与 file://，不收集 cookie，URL hash（诗句）不上报 -->
 <script data-goatcounter="https://maxdev.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<!-- Microsoft Clarity 行为回放：仅线上注入，本地与 file:// 不收集；URL hash（诗句）不会出现在录制 URL 维度 -->
+<script>
+if (location.hostname.endsWith('github.io')) {
+  (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","x653mvi26q");
+}
+</script>
 </body>
 </html>
