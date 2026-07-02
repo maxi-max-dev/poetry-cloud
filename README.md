@@ -40,4 +40,4 @@
 
 ---
 
-*Built by Max Huang with Claude.*
+*Built by Max with Claude.*
